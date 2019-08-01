@@ -1,0 +1,307 @@
+package javaapplication1;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Random;
+
+public class JavaApplication1 {
+
+       static int rozmiar; // rozmiar tablicy (iloœæ miast)
+   static int[][] tablica; // tablica z odleg³oœciami
+   static int liczbaOsobnikow; // iloœæ tras do utworzenia
+   static int[][] osobnik; // utworzona trasa
+   static int[][] kopia;
+   static int[] ocena; // ocena danej trasy
+   static int najlepsza = 0;
+   static int stopienMutacji;
+   static int stopienKrzyzowania;
+   static int najlepszyIndeks;
+
+   public static void WprowadzeniePliku(String sciezka) throws IOException {
+       FileReader plik = null;
+       BufferedReader plik2;
+       int linia = 0;
+       try {
+           plik2 = new BufferedReader(new FileReader(sciezka));
+           String line = plik2.readLine(); //odczytanie pierwszego wiersza
+           rozmiar = Integer.parseInt(line); //rozmiar tego co tam liczymy
+           tablica = new int[rozmiar][rozmiar]; // tablica z liczbami
+
+           line = plik2.readLine(); //przeskoczenie do nastêpnego wiersza
+
+           //wczytywanie z pliku
+           while (line != null) {
+
+               String[] wyraz = line.split("\\s+");
+               for (int i = 0; i < wyraz.length; i++) {
+
+                   tablica[linia][i] = Integer.parseInt(wyraz[i]);
+                   tablica[i][linia] = tablica[linia][i];
+               }
+               linia++;
+               line = plik2.readLine();
+           }
+       } finally {
+           if (plik != null) {
+               plik.close();
+           }
+       }
+   }
+
+   public static void TablicaOsobnikow() {
+       int[] tablica = new int[rozmiar];
+       osobnik = new int[liczbaOsobnikow][rozmiar];
+       kopia = new int[liczbaOsobnikow][rozmiar];
+       for (int i = 0; i < rozmiar; i++) {
+           tablica[i] = i;
+       }
+
+       for (int i = 0; i < liczbaOsobnikow; i++) {
+           MieszanieTablicy(tablica);
+           for (int j = 0; j < rozmiar; j++) {
+               osobnik[i][j] = tablica[j];
+           }
+       }
+   }
+
+   static void MieszanieTablicy(int[] ar) {
+       Random r = new Random();
+       for (int i = rozmiar - 1; i > 0; i--) {
+           int index = r.nextInt(i + 1);
+           int a = ar[index];
+           ar[index] = ar[i];
+           ar[i] = a;
+       }
+   }
+
+   public static void Ocena() {
+       ocena = new int[liczbaOsobnikow];
+       int wynik;
+       int start;
+       int koniec;
+       for (int i = 0; i < liczbaOsobnikow; i++) {
+           wynik = 0;
+           for (int j = 0; j < rozmiar - 1; j++) {
+               start = osobnik[i][j];
+               koniec = osobnik[i][j + 1];
+               wynik += tablica[start][koniec];
+           }
+           wynik += tablica[osobnik[i][rozmiar - 1]][osobnik[i][0]];
+           ocena[i] = wynik;
+
+           if (ocena[i] < najlepsza || najlepsza == 0) {
+               najlepsza = ocena[i];
+               najlepszyIndeks = i;
+           }
+       }
+   }
+
+   public static void SelekcjaTurniejowa(int liczba_turniejowa) {
+       Random r = new Random();
+       int temp;
+       int najlepszy;
+       for (int b = 0; b < liczbaOsobnikow; b++) {
+           najlepszy = r.nextInt(liczbaOsobnikow);
+           for (int i = 0; i < liczba_turniejowa; i++) {
+               temp = r.nextInt(liczbaOsobnikow);
+               if (ocena[najlepszy] > ocena[temp]) {
+                   najlepszy = temp;
+               }
+           }
+           kopia[b] = osobnik[najlepszy];
+       }
+
+       for (int i = 0; i < liczbaOsobnikow; i++) {
+           osobnik[i] = kopia[i];
+       }
+   }
+
+   public static void SelekcjaRuletkowa() { // nie dzia³a
+       Random r = new Random();
+       for (int b = 0; b < liczbaOsobnikow; b++) {
+           int suma = 0;
+           for (int i = 0; i < liczbaOsobnikow; i++) {
+               suma += ocena[i];
+           }
+           int s = 0;
+           int i = 0;
+           int los = r.nextInt(suma);
+           while (s < los && i < liczbaOsobnikow - 1) {
+               i += 1;
+               s += ocena[i];
+           }
+           kopia[b] = osobnik[i];
+       }
+
+       for (int i = 0; i < liczbaOsobnikow; i++) {
+           osobnik[i] = kopia[i];
+       }
+   }
+
+   public static void Krzyzowanie() {
+       Random r = new Random();
+       int procent;
+       for (int i = 0; i < liczbaOsobnikow; i += 2) {
+           procent = r.nextInt(1000);
+           if (procent < stopienKrzyzowania) {
+               int p1 = r.nextInt(rozmiar - 3) + 1;
+               int p2 = r.nextInt(rozmiar - 1 - p1) + p1;
+
+               int[] pot = new int[rozmiar];
+               int[] pot2 = new int[rozmiar];
+
+               for (int j = p1; j <= p2; j++) {
+                   pot[j] = osobnik[i + 1][j];
+                   pot2[j] = osobnik[i][j];
+               }
+
+               Przepisz(pot, i, 0, p1, p2);
+               Przepisz(pot, i, p2 + 1, p1, p2);
+               Przepisz(pot2, i + 1, 0, p1, p2);
+               Przepisz(pot2, i + 1, p2 + 1, p1, p2);
+
+               osobnik[i] = pot;
+               osobnik[i + 1] = pot2;
+           }
+
+       }
+   }
+
+   public static void Przepisz(int[] pot, int i, int pocz, int p1, int p2) {
+       int koniec = p1;
+       if (pocz > p2) {
+           koniec = pot.length;
+       }
+       for (int j = pocz; j < koniec; j++) {
+           int gen = osobnik[i][j];
+           int poz = -1;
+           while ((poz = Znajdz(pot, gen, p1, p2)) > -1) {
+               gen = osobnik[i][poz];
+           }
+           pot[j] = gen;
+       }
+   }
+
+   public static int Znajdz(int[] tab, int el, int start, int koniec) {
+       for (int i = start; i <= koniec; i++) {
+           if (tab[i] == el) {
+               return i;
+           }
+       }
+       return -1;
+   }
+
+   public static void Mutacja() {
+       Random r = new Random();
+       int pozycja, temp, zmiana;
+       for (int i = 0; i < liczbaOsobnikow; i++) {
+           if (i != najlepszyIndeks) {
+               for (int a = 0; a < rozmiar; a++) {
+                   zmiana = r.nextInt(1000);
+                   if (zmiana < stopienMutacji) {
+                       temp = osobnik[i][a];
+                       pozycja = r.nextInt(rozmiar);
+                       osobnik[i][a] = osobnik[i][pozycja];
+                       osobnik[i][pozycja] = temp;
+                   }
+               }
+           }
+       }
+   }
+
+   public static void MutacjaPojedyncza() {
+       Random r = new Random();
+       int [] tab;
+       int pozycja1, pozycja2, zmiana;
+       for (int i = 0; i < liczbaOsobnikow; i++) {
+                   zmiana = r.nextInt(1000);
+                   if (zmiana < stopienMutacji) {
+
+                       pozycja1 = r.nextInt(rozmiar);
+                       pozycja2 = r.nextInt(rozmiar - pozycja1) + pozycja1;
+                       tab = new int [pozycja2 - pozycja1];
+
+                       for (int q = 0; q < tab.length; q++){
+                           tab[q] = osobnik[i][rozmiar-(rozmiar-pozycja2)-q];
+                       }
+                       for (int q = 0; q < tab.length; q++){
+                           osobnik[i][pozycja1 + q] = tab[q];
+                       }
+                   }
+       }
+   }
+
+   public static void NajlepszaTrasa() {
+       for (int i = 0; i < rozmiar; i++) {
+           System.out.print(osobnik[najlepszyIndeks][i]);
+           if (i != rozmiar - 1) {
+               System.out.print("-");
+           }else{
+               System.out.print(" ");
+           }
+       }
+   }
+
+   public static void NajlepszaOcena() {
+       System.out.println(najlepsza);
+   }
+
+   public static void zapisPliku(String nazwa) throws IOException {
+       FileWriter plikWy = null;
+       try {
+           plikWy = new FileWriter(nazwa);
+           for (int i = 0; i < rozmiar; i++) {
+               plikWy.write(Integer.toString(osobnik[najlepszyIndeks][i]));
+               if (i != rozmiar - 1) {
+                   plikWy.write("-");
+               } else {
+                   plikWy.write(" " + Integer.toString(najlepsza));
+               }
+           }
+
+       } finally {
+           if (plikWy != null) {
+               plikWy.close();
+           }
+       }
+   }
+
+   public static void main(String[] args) throws IOException {
+       String berlin52 = "berlin52.txt"; // plik wejœciowy z bezrlin52
+       String a280 = "a280.txt";
+       String bays29 = "bays29.txt";
+       String eil51 = "eil51.txt";
+       String kroC100 = "kroC100.txt";
+       String pa561 = "pa561.txt";
+       String nazwa = "pa561_wynik.txt"; // plik wyjœciowy
+       liczbaOsobnikow = 300;
+       stopienMutacji = 6; // na 1000
+       stopienKrzyzowania = 950; // na 1000
+
+       char znak;
+       WprowadzeniePliku(pa561);
+       TablicaOsobnikow();
+       Ocena();
+       do {
+           for (int i = 0; i < 20000; i++) {
+               najlepsza = 0;
+               SelekcjaTurniejowa(40);
+               //SelekcjaRuletkowa();
+               Krzyzowanie();
+               Mutacja();
+               //MutacjaPojedyncza();
+               Ocena();
+               NajlepszaOcena();
+           }
+           System.out.println("Wpisz 'q' ¿eby przerwaæ");
+           znak = (char) System.in.read();
+       } while (znak != 'q');
+       NajlepszaTrasa();
+       NajlepszaOcena();
+       zapisPliku(nazwa);
+
+   }
+}
+
